@@ -34,7 +34,7 @@ class ExtensionInstaller extends LibraryInstaller
      */
     private function installInternalComponents(array $extra, string $type, $file): void
     {
-        foreach ($extra[$type] as $name => $class) {
+        foreach ($extra[$type] ?? [] as $name => $class) {
             file_put_contents("custom.${file}.properties", sprintf('%s=%s', $name, $class), FILE_APPEND);
         }
     }
