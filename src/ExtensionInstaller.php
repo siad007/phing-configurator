@@ -12,6 +12,11 @@ use Composer\Repository\InstalledRepositoryInterface;
  */
 class ExtensionInstaller extends LibraryInstaller
 {
+    private const CUSTOM_DEFS = [
+        'phing-custom-taskdefs' => 'task',
+        'phing-custom-typedefs' => 'type'
+    ];
+
     /**
      * @inheritDoc
      */
@@ -23,19 +28,34 @@ class ExtensionInstaller extends LibraryInstaller
     public function install(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
         parent::install($repo, $package);
-
-        $extra = $package->getExtra();
-        $this->installInternalComponents($extra, 'phing-custom-taskdefs', 'task');
-        $this->installInternalComponents($extra, 'phing-custom-typedefs', 'type');
+        $this->installInternalComponents($package->getExtra());
     }
 
-    /**
-     * @param array $extra
-     */
-    private function installInternalComponents(array $extra, string $type, $file): void
+    public function uninstall(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
-        foreach ($extra[$type] ?? [] as $name => $class) {
-            file_put_contents("custom.${file}.properties", sprintf('%s=%s', $name, $class), FILE_APPEND);
+        parent::uninstall($repo, $package);
+        $this->uninstallInternalComponents($package->getExtra());
+    }
+
+    private function installInternalComponents(array $extra): void
+    {
+        foreach (self::CUSTOM_DEFS as $type => $file) {
+            foreach ($extra[$type] ?? [] as $name => $class) {
+                $this->io->write("  - Installing custom phing ${file} <${name}>.");
+                file_put_contents("custom.${file}.properties", sprintf('%s=%s%s', $name, str_replace('\\', '\\\\', $class), PHP_EOL), FILE_APPEND);
+            }
+        }
+    }
+
+    private function uninstallInternalComponents(array $extra): void
+    {
+        foreach (self::CUSTOM_DEFS as $type => $file) {
+            foreach ($extra[$type] ?? [] as $name => $class) {
+                $this->io->write("  - Removing custom phing ${file} <${name}>.");
+                $content = file_get_contents("custom.${file}.properties");
+                $content = str_replace(sprintf('%s=%s%s', $name, str_replace('\\', '\\\\', $class), PHP_EOL), '', $content);
+                file_put_contents("custom.${file}.properties", $content);
+            }
         }
     }
 }
